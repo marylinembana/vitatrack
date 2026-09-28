@@ -1,0 +1,29 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn(){ return request.auth != null; }
+    function myUser(){ return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
+    function isAdmin(){ return signedIn() && myUser().role == 'admin'; }
+    function isNutritionist(){ return signedIn() && myUser().role == 'nutritionist'; }
+    function assignedToMe(uid){ return signedIn() && get(/databases/$(database)/documents/users/$(uid)).data.nutritionistId == request.auth.uid; }
+    match /users/{uid} {
+      allow create: if signedIn() && request.auth.uid == uid;
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin() || assignedToMe(uid));
+      allow update: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow delete: if isAdmin();
+    }
+    match /foods/{id} { allow read: if signedIn(); allow create,update,delete: if isAdmin(); }
+    match /categories/{id} { allow read: if signedIn(); allow create,update,delete: if isAdmin(); }
+    match /meals/{id} { allow create: if signedIn() && request.resource.data.userId == request.auth.uid; allow read,update,delete: if signedIn() && (resource.data.userId == request.auth.uid || isAdmin() || assignedToMe(resource.data.userId)); }
+    match /weightEntries/{id} { allow create: if signedIn() && request.resource.data.userId == request.auth.uid; allow read,update,delete: if signedIn() && (resource.data.userId == request.auth.uid || isAdmin() || assignedToMe(resource.data.userId)); }
+    match /nutritionGoals/{id} { allow create,update: if signedIn() && request.resource.data.userId == request.auth.uid; allow read,delete: if signedIn() && (resource.data.userId == request.auth.uid || isAdmin() || assignedToMe(resource.data.userId)); }
+    match /nutritionPlans/{id} { allow read: if signedIn() && (resource.data.userId == request.auth.uid || resource.data.patientId == request.auth.uid || resource.data.nutritionistId == request.auth.uid || isAdmin()); allow create,update,delete: if isNutritionist() || isAdmin(); }
+    match /recommendations/{id} { allow read: if signedIn() && (resource.data.userId == request.auth.uid || resource.data.nutritionistId == request.auth.uid || isAdmin()); allow create,update,delete: if isNutritionist() || isAdmin(); }
+    match /notifications/{id} { allow read,update: if signedIn() && (resource.data.userId == request.auth.uid || isAdmin()); allow create: if signedIn(); allow delete: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid); }
+    match /activityLogs/{id} { allow read: if isAdmin(); allow create: if signedIn(); }
+    match /conversations/{id} {
+      allow create: if signedIn() && (request.resource.data.userId == request.auth.uid || request.resource.data.nutritionistId == request.auth.uid);
+      allow read,update,delete: if signedIn() && (resource.data.userId == request.auth.uid || resource.data.nutritionistId == request.auth.uid || isAdmin());
+    }
+  }
+}

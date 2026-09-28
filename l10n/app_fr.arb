@@ -1,0 +1,27 @@
+{
+  "@@locale": "fr",
+  "appTitle": "VitaTrack",
+  "@appTitle": {
+    "description": "Nom de l'application"
+  },
+  "login": "Connexion",
+  "register": "Inscription",
+  "logout": "Déconnexion",
+  "email": "Adresse e-mail",
+  "password": "Mot de passe",
+  "dashboard": "Tableau de bord",
+  "foods": "Aliments",
+  "journal": "Journal",
+  "profile": "Profil",
+  "calories": "Calories",
+  "proteins": "Protéines",
+  "carbs": "Glucides",
+  "fats": "Lipides",
+  "weight": "Poids",
+  "goals": "Objectifs",
+  "notifications": "Notifications",
+  "save": "Enregistrer",
+  "cancel": "Annuler",
+  "delete": "Supprimer",
+  "addMeal": "Ajouter un repas"
+}

@@ -1,0 +1,10 @@
+{
+  "indexes": [
+    {"collectionGroup":"meals","queryScope":"COLLECTION","fields":[{"fieldPath":"userId","order":"ASCENDING"},{"fieldPath":"mealDate","order":"DESCENDING"}]},
+    {"collectionGroup":"weightEntries","queryScope":"COLLECTION","fields":[{"fieldPath":"userId","order":"ASCENDING"},{"fieldPath":"entryDate","order":"DESCENDING"}]},
+    {"collectionGroup":"nutritionGoals","queryScope":"COLLECTION","fields":[{"fieldPath":"userId","order":"ASCENDING"},{"fieldPath":"startDate","order":"DESCENDING"}]},
+    {"collectionGroup":"recommendations","queryScope":"COLLECTION","fields":[{"fieldPath":"userId","order":"ASCENDING"},{"fieldPath":"createdAt","order":"DESCENDING"}]},
+    {"collectionGroup":"notifications","queryScope":"COLLECTION","fields":[{"fieldPath":"userId","order":"ASCENDING"},{"fieldPath":"createdAt","order":"DESCENDING"}]}
+  ],
+  "fieldOverrides": []
+}

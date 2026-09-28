@@ -1,0 +1,26 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "vitatrack-28e2e",
+          "appId": "1:511308982929:android:cbb6070f1f82fc0d4dad30",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "vitatrack-28e2e",
+          "configurations": {
+            "android": "1:511308982929:android:cbb6070f1f82fc0d4dad30",
+            "web": "1:511308982929:web:c9df03287eca40b34dad30"
+          }
+        }
+      }
+    }
+  },
+  "firestore": {
+    "rules": "firebase/firestore.rules",
+    "indexes": "firebase/firestore.indexes.json"
+  }
+}

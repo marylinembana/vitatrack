@@ -1,0 +1,28 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+Future<void> seedVitaTrackFoods() async {
+  final db=FirebaseFirestore.instance;
+  final batch=db.batch();
+  final foods=[
+    {'id':'food_001','name':'Ndolé','category':'Plats locaux','calories':145,'protein':7.5,'carbs':8.2,'fat':9.1},
+    {'id':'food_002','name':'Eru','category':'Plats locaux','calories':118,'protein':7,'carbs':6,'fat':7.2},
+    {'id':'food_003','name':'Koki','category':'Plats locaux','calories':190,'protein':8,'carbs':24,'fat':6.5},
+    {'id':'food_004','name':'Achu','category':'Plats locaux','calories':160,'protein':3,'carbs':30,'fat':3.5},
+    {'id':'food_005','name':'Taro cuit','category':'Tubercules','calories':142,'protein':1.5,'carbs':34,'fat':0.2},
+    {'id':'food_006','name':'Plantain mûr cuit','category':'Féculents','calories':122,'protein':1.3,'carbs':31.9,'fat':0.4},
+    {'id':'food_007','name':'Manioc cuit','category':'Tubercules','calories':160,'protein':1.4,'carbs':38.1,'fat':0.3},
+    {'id':'food_008','name':'Macabo cuit','category':'Tubercules','calories':145,'protein':2,'carbs':34,'fat':0.4},
+    {'id':'food_009','name':'Riz blanc cuit','category':'Céréales','calories':130,'protein':2.7,'carbs':28.2,'fat':0.3},
+    {'id':'food_010','name':'Couscous de maïs','category':'Céréales','calories':112,'protein':2.5,'carbs':23.5,'fat':0.8},
+    {'id':'food_011','name':'Haricot rouge cuit','category':'Légumineuses','calories':127,'protein':8.7,'carbs':22.8,'fat':0.5},
+    {'id':'food_012','name':'Arachide','category':'Légumineuses','calories':567,'protein':25.8,'carbs':16.1,'fat':49.2},
+    {'id':'food_013','name':'Poulet cuit','category':'Protéines','calories':239,'protein':27.3,'carbs':0,'fat':13.6},
+    {'id':'food_014','name':'Poisson braisé','category':'Protéines','calories':160,'protein':24,'carbs':0,'fat':6},
+    {'id':'food_015','name':'Avocat','category':'Fruits','calories':160,'protein':2,'carbs':8.5,'fat':14.7},
+    {'id':'food_016','name':'Banane','category':'Fruits','calories':89,'protein':1.1,'carbs':22.8,'fat':0.3},
+    {'id':'food_017','name':'Papaye','category':'Fruits','calories':43,'protein':0.5,'carbs':10.8,'fat':0.3},
+    {'id':'food_018','name':'Ananas','category':'Fruits','calories':50,'protein':0.5,'carbs':13.1,'fat':0.1},
+  ];
+  for(final food in foods){final id=food['id'] as String;batch.set(db.collection('foods').doc(id),{...food,'servingUnit':'100 g','country':'Cameroun','isActive':true,'updatedAt':FieldValue.serverTimestamp()},SetOptions(merge:true));}
+  await batch.commit();
+}
