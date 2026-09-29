@@ -215,6 +215,7 @@ class _FoodFormState extends State<_FoodForm> {
       text: (widget.food?.per100g.fibers ?? 0).toStringAsFixed(0));
   late String? _categoryId = widget.food?.categoryId;
   late bool _active = widget.food?.isActive ?? true;
+  bool _showUrl = false;
   List<CategoryEntry> _categories = [];
 
   @override
@@ -290,10 +291,18 @@ class _FoodFormState extends State<_FoodForm> {
                 ],
               ),
               const SizedBox(height: AppDimensions.paddingSm),
+              Text('Photo de l\'aliment (optionnel)',
+                  style: Theme.of(context).textTheme.titleSmall),
+              const SizedBox(height: 6),
               Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  FoodThumb(imageUrl: _imageUrl.text.trim(), emoji: _emoji.text.trim().isEmpty ? '🍽️' : _emoji.text.trim(), size: 72),
+                  FoodThumb(
+                      imageUrl: _imageUrl.text.trim(),
+                      emoji: _emoji.text.trim().isEmpty
+                          ? '🍽️'
+                          : _emoji.text.trim(),
+                      size: 72),
                   const SizedBox(width: AppDimensions.paddingMd),
                   GalleryImagePickerTile(
                     size: 72,
@@ -302,29 +311,36 @@ class _FoodFormState extends State<_FoodForm> {
                     onPicked: (urls) =>
                         setState(() => _imageUrl.text = urls.last),
                   ),
-                  const SizedBox(width: AppDimensions.paddingMd),
-                  Expanded(
-                    child: AppTextField(
-                      controller: _imageUrl,
-                      label: 'Image — import galerie ou lien URL',
-                      icon: Icons.image_outlined,
-                      hint: 'https://…/photo.jpg',
+                  const Spacer(),
+                  if (_imageUrl.text.trim().isNotEmpty)
+                    IconButton(
+                      tooltip: 'Retirer l\'image',
+                      icon: const Icon(Icons.close,
+                          color: AppColors.error, size: 20),
+                      onPressed: () => setState(() => _imageUrl.clear()),
                     ),
-                  ),
                 ],
               ),
-              if (_imageUrl.text.trim().isNotEmpty)
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton.icon(
-                    style: TextButton.styleFrom(
-                        foregroundColor: AppColors.error,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 4, vertical: 4)),
-                    icon: const Icon(Icons.close, size: 16),
-                    label: const Text('Retirer l\'image'),
-                    onPressed: () => setState(() => _imageUrl.clear()),
-                  ),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 4)),
+                  icon: Icon(_showUrl ? Icons.link_off : Icons.link,
+                      size: 16, color: AppColors.textSecondary),
+                  label: Text(
+                      _showUrl ? 'Masquer le lien' : 'Coller un lien (avancé)',
+                      style: const TextStyle(
+                          fontSize: 12, color: AppColors.textSecondary)),
+                  onPressed: () => setState(() => _showUrl = !_showUrl),
+                ),
+              ),
+              if (_showUrl)
+                AppTextField(
+                  controller: _imageUrl,
+                  label: 'Lien image (URL) — optionnel',
+                  icon: Icons.image_outlined,
+                  hint: 'https://…/photo.jpg',
                 ),
               if (_categories.isNotEmpty)
                 DropdownButtonFormField<String>(

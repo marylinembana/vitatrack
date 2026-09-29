@@ -189,7 +189,7 @@ class AuthRepository {
 
   Future<void> updateProfile(UserAccount a) async {
     if (_online) {
-      await _upsertProfile(a.id, a.email, a.role, a.profile);
+      await _writeProfileRow(a.id, a.email, a.role, a.profile);
     }
     final list = _loadAccounts();
     final i = list.indexWhere((x) => x.id == a.id);
@@ -207,7 +207,7 @@ class AuthRepository {
   /// rôle admin ; sans cet envoi, le changement resterait confiné au
   /// cache local de l'admin et serait perdu au rechargement du concerné.
   Future<void> syncProfileToBackend(UserAccount a) async {
-    await _upsertProfile(a.id, a.email, a.role, a.profile);
+    await _writeProfileRow(a.id, a.email, a.role, a.profile);
   }
 
   /// Recharge le compte connecté depuis Supabase (statut à jour après
@@ -320,6 +320,37 @@ class AuthRepository {
     try {
       await _client.from(SupabaseTables.profiles).upsert(payload, onConflict: 'id');
     } catch (_) {/* RLS : écriture limitée à soi-même ou en tant qu'admin */}
+  }
+
+  /// Écrit une ligne `profiles` en respectant le RLS :
+  /// 1. UPDATE d'abord — seul le propriétaire ou un admin peut modifier une
+  ///    ligne existante (politique `profiles_update`, qui accepte `is_admin()`) ;
+  /// 2. INSERT (via upsert) en repli si la ligne n'existe pas encore — réservée
+  ///    à son propre uid (politique `profiles_insert`).
+  ///
+  /// On évite l'`INSERT ... ON CONFLICT` direct pour l'admin : Postgres évalue
+  /// AUSSI la politique d'insertion (`id = auth_uid()`) sur un upsert, ce qui
+  /// échoue dès que la cible n'est pas l'admin lui-même — c'est ce qui bloquait
+  /// la validation des comptes nutritionnistes (le statut restait « pending »).
+  Future<void> _writeProfileRow(
+      String id, String email, String role, Map<String, dynamic> profile) async {
+    if (!_online) return;
+    final columns = <String, dynamic>{
+      'email': email,
+      'role': role,
+      'full_name': profile['fullName'] ?? '',
+      'photo_url': profile['photoUrl'],
+      'nutritionist_id': profile['nutritionistId'],
+      'is_onboarded': profile['isOnboarded'] ?? false,
+      'profile': profile,
+    };
+    final table = SupabaseTables.profiles;
+    try {
+      final updated =
+          await _client.from(table).update(columns).eq('id', id).select('id');
+      if (updated.isNotEmpty) return;
+    } catch (_) {/* ligne absente : on tente l'insertion ci-dessous */}
+    await _upsertProfile(id, email, role, profile);
   }
 
   /// Construit un compte depuis la session Supabase + la ligne `profiles`.
