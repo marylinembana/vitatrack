@@ -1,11 +1,10 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 
 import '../../../../app/constants/app_constants.dart';
 import '../../../../core/errors/app_exception.dart';
 import '../../../../core/errors/error_handler.dart';
-import '../../../../core/services/firebase_bootstrap.dart';
+import '../../../../core/services/image_upload_service.dart';
 import '../../../../data/models/admin_model.dart';
 import '../../../../data/models/nutritionist_model.dart';
 import '../../../../data/models/user_model.dart';
@@ -199,6 +198,16 @@ class AuthProvider extends ChangeNotifier {
     return account;
   }
 
+  /// Recharge le compte connecté depuis Supabase et notifie l'UI.
+  /// Permet au nutritionniste en attente de découvrir une validation
+  /// admin sans re-démarrer l'application. Retourne le compte à jour,
+  /// ou null hors-ligne / session perdue.
+  Future<UserAccount?> refreshAccount() async {
+    final a = await _repo.refreshCurrentAccount();
+    if (a != null) notifyListeners();
+    return a;
+  }
+
   /// Persiste un profil utilisateur modifié.
   Future<void> updateUserProfile(UserModel user) async {
     final a = account;
@@ -221,19 +230,19 @@ class AuthProvider extends ChangeNotifier {
   Future<String?> _publishPhoto(String? photo) async {
     if (photo == null || photo.isEmpty) return photo;
     if (photo.startsWith('http://') || photo.startsWith('https://')) return photo;
-    if (FirebaseBootstrap.ready && account != null) {
+    // Chemin local résiduel (mobile) : lire les octets puis téléverser.
+    if (!kIsWeb) {
       try {
-        final ref = FirebaseStorage.instance
-            .ref()
-            .child('users')
-            .child(account!.id)
-            .child('avatar.jpg');
-        if (!kIsWeb) {
-          final file = File(photo);
-          if (await file.exists()) {
-            final task = await ref.putFile(file);
-            return await task.ref.getDownloadURL();
-          }
+        final file = File(photo);
+        if (await file.exists()) {
+          final bytes = await file.readAsBytes();
+          final url = await ImageUploadService.uploadBytes(
+            bytes,
+            fileName: file.uri.pathSegments.isNotEmpty
+                ? file.uri.pathSegments.last
+                : 'avatar.jpg',
+          );
+          if (url != null) return url;
         }
       } catch (_) {}
     }

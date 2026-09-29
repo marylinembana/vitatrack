@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/app_dimensions.dart';
@@ -10,6 +11,7 @@ import '../../../../data/models/user_model.dart';
 import '../../../../data/repositories/nutrition_repository.dart';
 import '../../../../data/repositories/recommendation_repository.dart';
 import '../../../../data/repositories/weight_repository.dart';
+import '../../authentication/presentation/controllers/auth_provider.dart';
 import 'patient_journal_screen.dart';
 
 /// Fiche d'un patient : profil, analyse, poids, actions.
@@ -116,6 +118,7 @@ class PatientDetailsScreen extends StatelessWidget {
   }
 
   Future<void> _sendRecommendation(BuildContext context) async {
+    final authorId = context.read<AuthProvider>().account?.id;
     final controller = TextEditingController();
     final title = await showDialog<String>(
       context: context,
@@ -144,7 +147,7 @@ class PatientDetailsScreen extends StatelessWidget {
         userId: user.id,
         title: 'Conseil de votre nutritionniste',
         body: title,
-        authorId: 'acc_demo_nutritionist',
+        authorId: authorId,
       );
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
-import 'firebase_sync_service.dart';
+import 'supabase_sync_service.dart';
 
 /// Finest abstraction de persistance locale (JSON via SharedPreferences).
 ///
@@ -34,7 +34,7 @@ class LocalStore {
   Future<void> writeList(String key, List<Map<String, dynamic>> value, {bool syncFirebase = true}) async {
     await _p.setString(key, jsonEncode(value));
     if (syncFirebase) {
-      try { await FirebaseSyncService.instance.syncStoreList(key, value); } catch (_) {}
+      try { await SupabaseSyncService.instance.syncStoreList(key, value); } catch (_) {}
     }
   }
 

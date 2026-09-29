@@ -5,6 +5,7 @@ import '../../../../app/theme/app_dimensions.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../../core/widgets/app_image.dart';
 import '../../../../core/widgets/app_text_field.dart';
+import '../../../../core/widgets/gallery_picker.dart';
 import '../../../../data/models/food_model.dart';
 import '../../../../data/repositories/admin_repository.dart';
 import '../../../../data/repositories/food_repository.dart';
@@ -294,16 +295,37 @@ class _FoodFormState extends State<_FoodForm> {
                 children: [
                   FoodThumb(imageUrl: _imageUrl.text.trim(), emoji: _emoji.text.trim().isEmpty ? '🍽️' : _emoji.text.trim(), size: 72),
                   const SizedBox(width: AppDimensions.paddingMd),
+                  GalleryImagePickerTile(
+                    size: 72,
+                    multiple: false,
+                    label: 'Galerie',
+                    onPicked: (urls) =>
+                        setState(() => _imageUrl.text = urls.last),
+                  ),
+                  const SizedBox(width: AppDimensions.paddingMd),
                   Expanded(
                     child: AppTextField(
                       controller: _imageUrl,
-                      label: 'Image (URL) — optionnel',
+                      label: 'Image — import galerie ou lien URL',
                       icon: Icons.image_outlined,
                       hint: 'https://…/photo.jpg',
                     ),
                   ),
                 ],
               ),
+              if (_imageUrl.text.trim().isNotEmpty)
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    style: TextButton.styleFrom(
+                        foregroundColor: AppColors.error,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 4, vertical: 4)),
+                    icon: const Icon(Icons.close, size: 16),
+                    label: const Text('Retirer l\'image'),
+                    onPressed: () => setState(() => _imageUrl.clear()),
+                  ),
+                ),
               if (_categories.isNotEmpty)
                 DropdownButtonFormField<String>(
                   value: _categoryId,

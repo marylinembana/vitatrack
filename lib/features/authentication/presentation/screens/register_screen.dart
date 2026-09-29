@@ -1,12 +1,16 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'dart:typed_data';
+
+import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/app_dimensions.dart';
+import '../../../../core/services/image_upload_service.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../../core/widgets/app_button.dart';
-import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/app_text_field.dart';
+import '../../../dashboard/user_dashboard/controllers/app_provider.dart';
 import '../controllers/auth_provider.dart';
 
 /// Inscription : choix du type de compte (Patient ou Nutritionniste).
@@ -30,18 +34,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _phone = TextEditingController();
   final _city = TextEditingController();
   final _experience = TextEditingController(text: '0');
-  final _bio = TextEditingController();
-  final _diplomaInput = TextEditingController();
-  final _diplomas = <String>[];
+
+  /// Documents (diplômes) importés depuis la galerie, en mémoire jusqu'à
+  /// l'inscription : téléversés vers Supabase une fois le compte créé.
+  final _docs = <_DocItem>[];
 
   bool _obscure = true;
   bool _isNutritionist = false;
+  bool _uploading = false;
 
   @override
   void dispose() {
     for (final c in [
       _name, _email, _password, _confirm, _specialization, _license,
-      _phone, _city, _experience, _bio, _diplomaInput,
+      _phone, _city, _experience,
     ]) {
       c.dispose();
     }
@@ -63,11 +69,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
         phone: _phone.text,
         city: _city.text,
         experienceYears: int.tryParse(_experience.text.trim()) ?? 0,
-        bio: _bio.text,
-        diplomaUrls: _diplomas,
       );
       if (!mounted) return;
       if (ok) {
+        // Le compte vient d'être créé : on téléverse les documents vers
+        // Supabase (le uid n'existe qu'après inscription) puis on complète
+        // le profil avec les URLs obtenues.
+        await _uploadDocuments(auth);
         navigator.pushNamedAndRemoveUntil(
             '/nutritionist/verification', (route) => false);
       } else {
@@ -83,6 +91,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
     if (!mounted) return;
     if (ok) {
+      // Lie le nouveau compte au tableau de bord avant l'onboarding,
+      // sinon GoalSetupScreen reste sans utilisateur (redirection bloquée).
+      final user = auth.currentUser;
+      if (user != null) {
+        await context.read<AppProvider>().bindUser(user);
+      }
+      if (!mounted) return;
       navigator.pushNamedAndRemoveUntil(
           '/onboarding-setup', (route) => false);
     } else {
@@ -98,13 +113,120 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  void _addDiploma() {
-    final url = _diplomaInput.text.trim();
-    if (url.isEmpty) return;
-    setState(() {
-      _diplomas.add(url);
-      _diplomaInput.clear();
-    });
+  /// Ajoute des documents en les important depuis la galerie de l'appareil.
+  Future<void> _addDocsFromGallery() async {
+    try {
+      final picked = await ImagePicker().pickMultiImage(
+        imageQuality: 85,
+        maxWidth: 1600,
+        maxHeight: 1600,
+      );
+      if (picked.isEmpty) return;
+      final items = <_DocItem>[];
+      for (final x in picked) {
+        items.add(_DocItem(
+          bytes: await x.readAsBytes(),
+          name: x.name.isNotEmpty ? x.name : 'document.jpg',
+          contentType: x.mimeType ?? 'image/jpeg',
+        ));
+      }
+      if (!mounted) return;
+      setState(() => _docs.addAll(items));
+    } catch (_) {
+      if (mounted) {
+        _showError('Galerie indisponible sur cet appareil.');
+      }
+    }
+  }
+
+  /// Téléverse les documents en mémoire et complète le profil nutritionniste
+  /// avec les URLs publiques obtenues (à appeler après création du compte).
+  Future<void> _uploadDocuments(AuthProvider auth) async {
+    if (_docs.isEmpty) return;
+    _setUploading(true);
+    final urls = <String>[];
+    for (final d in _docs) {
+      final url = await ImageUploadService.uploadBytes(
+        d.bytes,
+        fileName: d.name,
+        contentType: d.contentType,
+      );
+      if (url != null) urls.add(url);
+    }
+    if (urls.isNotEmpty) {
+      final n = auth.currentNutritionist;
+      if (n != null) {
+        n.diplomaUrls = urls;
+        await auth.updateNutritionistProfile(n);
+      }
+    }
+    _setUploading(false);
+  }
+
+  void _setUploading(bool value) {
+    if (mounted) setState(() => _uploading = value);
+  }
+
+  /// Vignette d'un document importé, supprimable.
+  Widget _docThumbnail(int index) {
+    final doc = _docs[index];
+    return SizedBox(
+      width: 72,
+      height: 72,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+            child: Image.memory(doc.bytes, fit: BoxFit.cover),
+          ),
+          Positioned(
+            top: 0,
+            right: 0,
+            child: InkWell(
+              onTap: () => setState(() => _docs.removeAt(index)),
+              child: const CircleAvatar(
+                radius: 10,
+                backgroundColor: Colors.black54,
+                child: Icon(Icons.close, size: 14, color: Colors.white),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Pastille « Ajouter depuis la galerie ».
+  Widget _addDocTile() {
+    return InkWell(
+      onTap: _uploading ? null : _addDocsFromGallery,
+      borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+      child: Container(
+        width: 72,
+        height: 72,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+          border: Border.all(color: AppColors.divider),
+          color: AppColors.surface,
+        ),
+        child: _uploading
+            ? const Padding(
+                padding: EdgeInsets.all(18),
+                child: CircularProgressIndicator(strokeWidth: 2.5),
+              )
+            : Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.photo_library_outlined,
+                      color: AppColors.primary),
+                  const SizedBox(height: 2),
+                  Text('Galerie',
+                      style: Theme.of(context).textTheme.bodySmall),
+                ],
+              ),
+      ),
+    );
   }
 
   @override
@@ -178,8 +300,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   label: _isNutritionist
                       ? 'Créer et soumettre à vérification'
                       : "S'inscrire",
-                  loading: auth.isLoading,
-                  onPressed: _submit,
+                  loading: auth.isLoading || _uploading,
+                  onPressed: _uploading ? null : _submit,
                 ),
                 const SizedBox(height: AppDimensions.paddingSm),
                 Center(
@@ -241,46 +363,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
           icon: Icons.timeline_outlined,
           keyboardType: TextInputType.number,
         ),
-        AppTextField(
-          controller: _bio,
-          label: 'Présentation',
-          icon: Icons.notes_outlined,
-          maxLines: 3,
-        ),
         const SizedBox(height: AppDimensions.paddingSm),
         Text('Diplômes & attestations',
             style: Theme.of(context).textTheme.titleSmall),
         Text(
-          'Ajoutez les liens vers vos documents (images). Obligatoire pour '
-          'la vérification.',
+          'Importez les images de vos documents depuis votre galerie. '
+          'Obligatoire pour la vérification.',
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: AppColors.textSecondary,
               ),
         ),
         const SizedBox(height: AppDimensions.paddingSm),
-        AppTextField(
-          controller: _diplomaInput,
-          label: 'Lien du document',
-          icon: Icons.description_outlined,
-          suffix: IconButton(
-            icon: const Icon(Icons.add, color: AppColors.primary),
-            onPressed: _addDiploma,
-          ),
+        Wrap(
+          spacing: AppDimensions.paddingSm,
+          runSpacing: AppDimensions.paddingSm,
+          children: [
+            for (var i = 0; i < _docs.length; i++) _docThumbnail(i),
+            _addDocTile(),
+          ],
         ),
-        if (_diplomas.isNotEmpty)
-          AppCard(
-            padding: const EdgeInsets.all(AppDimensions.paddingSm),
-            child: Wrap(
-              children: [
-                for (var i = 0; i < _diplomas.length; i++)
-                  InputChip(
-                    label: Text('Document ${i + 1}'),
-                    avatar: const Icon(Icons.check_circle_outline, size: 16),
-                    onDeleted: () => setState(() => _diplomas.removeAt(i)),
-                  ),
-              ],
-            ),
-          ),
         const SizedBox(height: AppDimensions.paddingMd),
       ];
 }
@@ -379,5 +480,18 @@ class _RoleCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Document importé depuis la galerie, conservé en mémoire jusqu'à l'envoi.
+class _DocItem {
+  final Uint8List bytes;
+  final String name;
+  final String contentType;
+
+  const _DocItem({
+    required this.bytes,
+    required this.name,
+    required this.contentType,
+  });
 }
 

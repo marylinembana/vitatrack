@@ -36,6 +36,10 @@ class NutritionistRepository {
     if (index == -1) return;
     accounts[index].profile = nutritionist.toMap();
     await _auth.saveAccounts(accounts);
+    // Persistance réelle : sans cet upsert explicite, la validation admin
+    // (statut, note) ne toucherait que le cache local de l'appareil admin
+    // et le nutritionniste resterait bloqué sur l'écran de vérification.
+    await _auth.syncProfileToBackend(accounts[index]);
   }
 
   Future<void> addPatient(String nutritionistId, String patientId) async {

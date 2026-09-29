@@ -24,31 +24,12 @@ class ConversationsScreen extends StatefulWidget {
 class _ConversationsScreenState extends State<ConversationsScreen> {
   final _repo = MessageRepository.instance;
 
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _openDemoThread());
-  }
-
   bool get _isNutritionist =>
       context.read<AuthProvider>().role == 'nutritionist';
 
   String get _accountId => _isNutritionist
       ? context.read<AuthProvider>().currentNutritionist?.id ?? ''
       : context.read<AppProvider>().user?.id ?? '';
-
-  /// Ouvre automatiquement la conversation avec le nutritionniste démo
-  /// (côté utilisateur) pour la démonstration.
-  Future<void> _openDemoThread() async {
-    if (_isNutritionist) return;
-    final userId = _accountId;
-    if (userId.isEmpty) return;
-    await _repo.openConversation(
-      userId: userId,
-      nutritionistId: 'acc_demo_nutritionist',
-    );
-    if (mounted) setState(() {});
-  }
 
   @override
   Widget build(BuildContext context) {

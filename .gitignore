@@ -41,7 +41,6 @@ serviceAccount*.json
 .firebase/
 
 # Web related
-lib/generated_plugin_registrant.dart
 
 # Symbolication related
 app.*.symbols
@@ -56,3 +55,16 @@ app.*.map.json
 
 # Vercel
 .vercel
+**/.vercel/
+
+# Node
+node_modules/
+
+# Supabase secrets (local only)
+.supabase_local.env
+.supabase_db_password.txt
+supabase/.temp/
+.supabase_demo_users.json
+
+# Captures d'écran locales (non suivies)
+screenshot_*.png

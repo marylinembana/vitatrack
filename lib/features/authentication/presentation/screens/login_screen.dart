@@ -23,8 +23,8 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _email = TextEditingController(text: 'user@vitatrack.app');
-  final _password = TextEditingController(text: 'demo1234');
+  final _email = TextEditingController();
+  final _password = TextEditingController();
   bool _obscure = true;
 
   @override
@@ -93,6 +93,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   AppTextField(
                     controller: _email,
                     label: 'Email',
+                    hint: 'vous@exemple.com',
                     icon: Icons.mail_outline,
                     keyboardType: TextInputType.emailAddress,
                     validator: Validators.email,
@@ -100,6 +101,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   AppTextField(
                     controller: _password,
                     label: 'Mot de passe',
+                    hint: '••••••••',
                     icon: Icons.lock_outline,
                     obscureText: _obscure,
                     validator: Validators.password,
@@ -141,8 +143,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: AppDimensions.paddingMd),
-                  _DemoHint(),
                 ],
               ),
             ),
@@ -153,35 +153,3 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 }
 
-class _DemoHint extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppDimensions.paddingMd),
-      decoration: BoxDecoration(
-        color: AppColors.accentSoft,
-        borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: const [
-              Icon(Icons.info_outline,
-                  size: AppDimensions.iconSm, color: AppColors.accent),
-              SizedBox(width: 6),
-              Text('Comptes de démonstration',
-                  style: TextStyle(fontWeight: FontWeight.w600)),
-            ],
-          ),
-          const SizedBox(height: 6),
-          const Text('User : user@vitatrack.app\n'
-              'Nutri : nutritionniste@vitatrack.app\n'
-              'Admin : admin@vitatrack.app\n'
-              'Mot de passe : demo1234',
-              style: TextStyle(fontSize: 12)),
-        ],
-      ),
-    );
-  }
-}

@@ -11,6 +11,7 @@ import '../../../../data/repositories/admin_repository.dart';
 import '../../../../data/repositories/auth_repository.dart';
 import '../../../../data/repositories/nutritionist_repository.dart';
 import '../../../../data/repositories/user_repository.dart';
+import '../../../../core/services/supabase_sync_service.dart';
 import '../../authentication/presentation/controllers/auth_provider.dart';
 
 /// Gestion des comptes : onglets Utilisateurs et Nutritionnistes.
@@ -393,6 +394,12 @@ class _NutritionistsTabState extends State<_NutritionistsTab> {
       action: 'review_nutritionist_${status.key}',
       target: n.email,
     );
+    // Relit les profils distants : confirme que la validation est bien
+    // partie vers Supabase et rafraîchit l'affichage avec la source réelle.
+    try {
+      await SupabaseSyncService.instance
+          .pullForCurrentAccount(role: 'admin');
+    } catch (_) {/* hors-ligne : le cache local reste la source affichée */}
     if (mounted) setState(() {});
   }
 
@@ -521,7 +528,7 @@ class _PasswordDialog extends StatefulWidget {
 }
 
 class _PasswordDialogState extends State<_PasswordDialog> {
-  final _controller = TextEditingController(text: 'demo1234');
+  final _controller = TextEditingController();
 
   @override
   Widget build(BuildContext context) {

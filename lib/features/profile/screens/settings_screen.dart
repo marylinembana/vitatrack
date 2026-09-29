@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/services/firebase_bootstrap.dart';
+import '../../../../core/services/supabase_bootstrap.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/app_dimensions.dart';
 import '../../../../core/services/local_store.dart';
@@ -95,9 +95,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const Text('VitaTrack — version 1.0.0'),
                 const SizedBox(height: 4),
                 Text(
-                  FirebaseBootstrap.ready
-                      ? 'Firebase actif : authentification et données synchronisées avec Cloud Firestore.'
-                      : 'Firebase non configuré : l’application utilise le mode local de secours. Exécutez flutterfire configure pour activer Firebase.',
+                  SupabaseBootstrap.ready
+                      ? 'Supabase actif : authentification, données et images synchronisées avec votre compte.'
+                      : 'Supabase non connecté : l’application utilise le mode local de secours.',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],

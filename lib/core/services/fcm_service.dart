@@ -1,9 +1,10 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'firebase_bootstrap.dart';
 
 /// Service gérant les notifications push via Firebase Cloud Messaging (FCM).
+/// Firebase n'est utilisé ici que pour le push ; l'authentification, les
+/// données et les images sont gérés par Supabase.
 class FcmService {
   FcmService._();
   static final instance = FcmService._();
@@ -27,43 +28,28 @@ class FcmService {
 
       if (settings.authorizationStatus == AuthorizationStatus.authorized ||
           settings.authorizationStatus == AuthorizationStatus.provisional) {
-        
         // Récupération du token
         _fcmToken = await messaging.getToken();
-        if (_fcmToken != null && userId != null && userId.isNotEmpty) {
-          await _saveTokenToUser(userId, _fcmToken!);
+        if (kDebugMode && _fcmToken != null) {
+          debugPrint('FCM token (${userId ?? '-'}): $_fcmToken');
         }
 
         // Écoute du renouvellement de token
-        messaging.onTokenRefresh.listen((newToken) async {
+        messaging.onTokenRefresh.listen((newToken) {
           _fcmToken = newToken;
-          if (userId != null && userId.isNotEmpty) {
-            await _saveTokenToUser(userId, newToken);
-          }
         });
 
         // Écoute des messages en premier plan
         FirebaseMessaging.onMessage.listen((RemoteMessage message) {
           if (kDebugMode) {
-            print('Notification reçue (foreground) : ${message.notification?.title}');
+            debugPrint('Notification reçue (foreground) : ${message.notification?.title}');
           }
         });
       }
     } catch (e) {
       if (kDebugMode) {
-        print('Erreur d\'initialisation FCM : $e');
+        debugPrint('Erreur d\'initialisation FCM : $e');
       }
     }
-  }
-
-  /// Sauvegarde le token FCM dans le document de l'utilisateur dans Firestore.
-  Future<void> _saveTokenToUser(String userId, String token) async {
-    if (!FirebaseBootstrap.ready) return;
-    try {
-      await FirebaseFirestore.instance.collection('users').doc(userId).set({
-        'fcmToken': token,
-        'fcmTokenUpdatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
-    } catch (_) {}
   }
 }

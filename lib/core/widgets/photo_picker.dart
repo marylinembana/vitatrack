@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../app/theme/app_colors.dart';
+import '../services/image_upload_service.dart';
 import 'app_text_field.dart';
 import 'profile_avatar.dart';
 
@@ -49,6 +50,12 @@ Future<String?> pickPhotoSheet(
               ),
             ),
           const SizedBox(height: 6),
+          ListTile(
+            leading: const Icon(Icons.photo_library_outlined,
+                color: AppColors.primary),
+            title: const Text('Choisir depuis la galerie'),
+            onTap: () => Navigator.of(sheetContext).pop('gallery'),
+          ),
           if (currentPhoto == null || currentPhoto.startsWith('http'))
             ListTile(
               leading: const Icon(Icons.photo_camera_outlined,
@@ -57,14 +64,9 @@ Future<String?> pickPhotoSheet(
               onTap: () => Navigator.of(sheetContext).pop('camera'),
             ),
           ListTile(
-            leading: const Icon(Icons.photo_library_outlined,
-                color: AppColors.primary),
-            title: const Text('Choisir depuis la galerie'),
-            onTap: () => Navigator.of(sheetContext).pop('gallery'),
-          ),
-          ListTile(
-            leading: const Icon(Icons.link, color: AppColors.primary),
-            title: const Text('Utiliser un lien image (URL)'),
+            leading: const Icon(Icons.link, color: AppColors.textSecondary),
+            title: const Text('Utiliser un lien image (URL)',
+                style: TextStyle(color: AppColors.textSecondary)),
             onTap: () => Navigator.of(sheetContext).pop('url'),
           ),
           if (hasPhoto)
@@ -105,8 +107,19 @@ Future<String?> _pickFromPicker(
       imageQuality: 85,
     );
     if (picked == null) return null;
+    // Import depuis l'appareil (web comme mobile) : on téléverse les octets
+    // vers Supabase Storage et on retourne directement l'URL publique.
+    final bytes = await picked.readAsBytes();
+    final url = await ImageUploadService.uploadBytes(
+      bytes,
+      fileName: picked.name,
+      contentType: picked.mimeType ?? 'image/jpeg',
+    );
+    if (url != null) return url;
+    // Repli mobile : conserver le chemin local si l'envoi échoue.
     if (!kIsWeb) return File(picked.path).absolute.path;
-    // Web : on garde le nom de fichier, AppImage ne peut pas relire un File.
+    messenger.showSnackBar(const SnackBar(
+        content: Text('Envoi de l\'image impossible. Réessayez ou utilisez un lien (URL).')));
     return null;
   } catch (_) {
     messenger.showSnackBar(const SnackBar(

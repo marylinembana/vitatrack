@@ -8,6 +8,7 @@ import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/app_image.dart';
 import '../../../../core/widgets/app_text_field.dart';
+import '../../../../core/widgets/gallery_picker.dart';
 import '../../../../core/widgets/profile_avatar.dart';
 import '../../../../data/models/nutritionist_model.dart';
 import '../../authentication/presentation/controllers/auth_provider.dart';
@@ -26,6 +27,28 @@ class NutritionistVerificationScreen extends StatefulWidget {
 
 class _NutritionistVerificationScreenState
     extends State<NutritionistVerificationScreen> {
+  bool _refreshing = false;
+
+  /// Relit le statut distant ; si l'admin a validé entre-temps, on envoie
+  /// directement le nutritionniste vers son espace (fix du blocage après
+  /// validation).
+  Future<void> _refreshStatus(AuthProvider auth) async {
+    if (_refreshing) return;
+    setState(() => _refreshing = true);
+    final account = await auth.refreshAccount();
+    if (!mounted) return;
+    setState(() => _refreshing = false);
+    final verified =
+        account != null && NutritionistModel.fromMap(account.profile).hasAccess;
+    if (!verified) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Validation toujours en attente de l\'administrateur.')));
+      return;
+    }
+    Navigator.of(context)
+        .pushNamedAndRemoveUntil('/nutritionist/home', (_) => false);
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
@@ -43,6 +66,45 @@ class _NutritionistVerificationScreenState
       );
     }
 
+    // Accès déjà validé (validation admin détectée en cours de session).
+    if (nutritionist.hasAccess) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Vérification du compte'),
+          automaticallyImplyLeading: false,
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(AppDimensions.paddingLg),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.verified,
+                    color: AppColors.success, size: 64),
+                const SizedBox(height: AppDimensions.paddingMd),
+                Text('Compte validé !',
+                    style: Theme.of(context).textTheme.headlineSmall),
+                const SizedBox(height: AppDimensions.paddingSm),
+                Text(
+                  'Votre dossier a été vérifié par notre équipe. '
+                  'Vous avez maintenant accès à votre espace professionnel.',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: AppDimensions.paddingLg),
+                AppButton(
+                  label: 'Accéder à mon espace',
+                  icon: Icons.arrow_forward,
+                  onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil(
+                      '/nutritionist/home', (_) => false),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     final rejected =
         nutritionist.verificationStatus == VerificationStatus.rejected;
 
@@ -51,6 +113,16 @@ class _NutritionistVerificationScreenState
         title: const Text('Vérification du compte'),
         automaticallyImplyLeading: false,
         actions: [
+          IconButton(
+            tooltip: 'Actualiser le statut',
+            icon: _refreshing
+                ? const SizedBox(
+                    height: 18,
+                    width: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2))
+                : const Icon(Icons.refresh),
+            onPressed: () => _refreshStatus(auth),
+          ),
           IconButton(
             tooltip: 'Se déconnecter',
             icon: const Icon(Icons.logout),
@@ -145,7 +217,6 @@ class _NutritionistVerificationScreenState
     final expC =
         TextEditingController(text: '${current.experienceYears}');
     final bioC = TextEditingController(text: current.bio);
-    final diplomaC = TextEditingController();
     final diplomas = <String>[...current.diplomaUrls];
     final formKey = GlobalKey<FormState>();
 
@@ -210,34 +281,20 @@ class _NutritionistVerificationScreenState
                   const SizedBox(height: AppDimensions.paddingSm),
                   Text('Diplômes & attestations',
                       style: Theme.of(sheetContext).textTheme.titleSmall),
-                  AppTextField(
-                    controller: diplomaC,
-                    label: 'Lien du document',
-                    suffix: IconButton(
-                      icon: const Icon(Icons.add, color: AppColors.primary),
-                      onPressed: () {
-                        final url = diplomaC.text.trim();
-                        if (url.isEmpty) return;
-                        setSheet(() {
-                          diplomas.add(url);
-                          diplomaC.clear();
-                        });
-                      },
-                    ),
+                  Text(
+                    'Importez les images de vos documents depuis votre galerie.',
+                    style: Theme.of(sheetContext).textTheme.bodySmall?.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
                   ),
-                  if (diplomas.isNotEmpty)
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        for (var i = 0; i < diplomas.length; i++)
-                          InputChip(
-                            label: Text('Document ${i + 1}'),
-                            onDeleted: () =>
-                                setSheet(() => diplomas.removeAt(i)),
-                          ),
-                      ],
-                    ),
+                  const SizedBox(height: 6),
+                  GalleryImageListField(
+                    urls: diplomas,
+                    onAdded: (urls) =>
+                        setSheet(() => diplomas.addAll(urls)),
+                    onRemoved: (i) =>
+                        setSheet(() => diplomas.removeAt(i)),
+                  ),
                   const SizedBox(height: AppDimensions.paddingMd),
                   ElevatedButton(
                     onPressed: () async {

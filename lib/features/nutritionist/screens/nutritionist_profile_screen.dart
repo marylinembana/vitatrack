@@ -8,6 +8,7 @@ import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/app_image.dart';
 import '../../../../core/widgets/app_text_field.dart';
+import '../../../../core/widgets/gallery_picker.dart';
 import '../../../../core/widgets/photo_picker.dart';
 import '../../../../core/widgets/profile_avatar.dart';
 import '../../../../core/widgets/section_header.dart';
@@ -165,7 +166,6 @@ class NutritionistProfileScreen extends StatelessWidget {
     final cityC = TextEditingController(text: current.city);
     final expC = TextEditingController(text: '${current.experienceYears}');
     final bioC = TextEditingController(text: current.bio);
-    final diplomaC = TextEditingController();
     final diplomas = <String>[...current.diplomaUrls];
     final formKey = GlobalKey<FormState>();
 
@@ -262,38 +262,20 @@ class NutritionistProfileScreen extends StatelessWidget {
                   const SizedBox(height: AppDimensions.paddingSm),
                   Text('Diplômes & attestations',
                       style: Theme.of(sheetContext).textTheme.titleSmall),
-                  const SizedBox(height: 6),
-                  AppTextField(
-                    controller: diplomaC,
-                    label: 'Lien du document (image URL)',
-                    icon: Icons.image_outlined,
-                    suffix: IconButton(
-                      icon: const Icon(Icons.add, color: AppColors.primary),
-                      onPressed: () {
-                        final url = diplomaC.text.trim();
-                        if (url.isEmpty) return;
-                        setSheet(() {
-                          diplomas.add(url);
-                          diplomaC.clear();
-                        });
-                      },
-                    ),
+                  Text(
+                    'Importez les images de vos documents depuis votre galerie.',
+                    style: Theme.of(sheetContext).textTheme.bodySmall?.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
                   ),
-                  if (diplomas.isNotEmpty)
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        for (var i = 0; i < diplomas.length; i++)
-                          InputChip(
-                            avatar: FoodThumb(
-                                imageUrl: diplomas[i], emoji: '📄', size: 24),
-                            label: Text('Document ${i + 1}'),
-                            onDeleted: () =>
-                                setSheet(() => diplomas.removeAt(i)),
-                          ),
-                      ],
-                    ),
+                  const SizedBox(height: 6),
+                  GalleryImageListField(
+                    urls: diplomas,
+                    onAdded: (urls) =>
+                        setSheet(() => diplomas.addAll(urls)),
+                    onRemoved: (i) =>
+                        setSheet(() => diplomas.removeAt(i)),
+                  ),
                   const SizedBox(height: AppDimensions.paddingMd),
                   ElevatedButton(
                     onPressed: () async {
