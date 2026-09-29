@@ -42,11 +42,25 @@ Future<void> main() async {
   // Restauration de session éventuelle.
   final account = await authProvider.restoreSession();
   if (account != null) {
-    if (SupabaseBootstrap.ready) {
-      await SupabaseSyncService.instance.pullForCurrentAccount(role: account.role);
-    }
+    // On attache tout de suite le contexte utilisateur depuis le cache local :
+    // l'interface s'affiche sans attendre le réseau.
     if (account.role == UserRole.user) {
       appProvider.bindUser(UserModel.fromMap(account.profile));
+    }
+    if (SupabaseBootstrap.ready) {
+      if (SupabaseSyncService.instance.hasRecentPull()) {
+        // Cache frais : rafraîchissement en arrière-plan, puis relecture.
+        SupabaseSyncService.instance
+            .pullForCurrentAccount(role: account.role)
+            .whenComplete(() => appProvider.reload());
+      } else {
+        // Premier lancement / cache périmé : on attend les données à jour.
+        await SupabaseSyncService.instance
+            .pullForCurrentAccount(role: account.role);
+        if (account.role == UserRole.user) {
+          await appProvider.reload();
+        }
+      }
     }
     if (FirebaseBootstrap.ready) {
       await FcmService.instance.init(account.id);

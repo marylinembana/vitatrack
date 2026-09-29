@@ -75,6 +75,14 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Relit le cache local (statique + personnel) après un rafraîchissement
+  /// réseau en arrière-plan. Les lectures sont synchrones : quasi instantané.
+  Future<void> reload() async {
+    if (_userId == null) return;
+    await _loadStatic();
+    await refresh();
+  }
+
   // ---------- Aliments ----------
 
   List<CategoryModel> categoriesWithCounts() => _categories;

@@ -18,6 +18,10 @@ class SupabaseSyncService {
   /// Clé d'auto-persistance du dernier pull, pour éviter un pull systématique.
   static const _lastPullKey = 'vitatrack_last_supabase_pull';
 
+  /// Durée de validité du cache : sous ce seuil, un redémarrage n'attend pas
+  /// le réseau et affiche immédiatement les données locales.
+  static const Duration pullTtl = Duration(minutes: 2);
+
   // ── PUSH ──────────────────────────────────────────────────────────────
 
   /// Envoie la liste locale [rows] dans la table correspondante (upsert).
@@ -38,63 +42,86 @@ class SupabaseSyncService {
 
   // ── PULL ──────────────────────────────────────────────────────────────
 
+  /// true si un pull a réussi il y a moins de [within] : le cache local est
+  /// considéré frais, l'app peut l'afficher sans attendre le réseau.
+  bool hasRecentPull({Duration within = pullTtl}) {
+    final raw = LocalStore.instance.readString(_lastPullKey);
+    if (raw == null) return false;
+    final t = DateTime.tryParse(raw);
+    if (t == null) return false;
+    return DateTime.now().difference(t) < within;
+  }
+
   /// Recharge depuis Postgres les lignes visibles par le compte connecté.
+  ///
+  /// Les requêtes sont **indépendantes** et donc lancées en parallèle
+  /// (Future.wait) : sur un réseau mobile/lointain cela efface le cumul des
+  /// allers-retours séquentiels (≈ 10 RTT → 1). Chaque table gère ses propres
+  /// erreurs pour qu'un échec isolé n'annule pas tout le rafraîchissement.
   Future<void> pullForCurrentAccount({required String role}) async {
     if (_client.auth.currentUser == null) return;
-    try {
+    final tasks = <Future<void>>[
       // Références partagées.
-      await _pullTable(SupabaseTables.foods, StoreKeys.foods);
-      await _pullTable(SupabaseTables.categories, StoreKeys.categories);
+      _pullTable(SupabaseTables.foods, StoreKeys.foods),
+      _pullTable(SupabaseTables.categories, StoreKeys.categories),
       // Données personnelles (RLS restreint à soi / patients assignés).
-      await _pullTable(SupabaseTables.meals, StoreKeys.meals);
-      await _pullTable(SupabaseTables.weightEntries, StoreKeys.weights);
-      await _pullTable(SupabaseTables.nutritionGoals, StoreKeys.goals);
-      await _pullTable(SupabaseTables.nutritionPlans, StoreKeys.mealPlans);
-      await _pullTable(SupabaseTables.recommendations, StoreKeys.recommendations);
-      await _pullTable(SupabaseTables.notifications, StoreKeys.notifications);
-      await _pullTable(SupabaseTables.conversations, StoreKeys.conversations);
+      _pullTable(SupabaseTables.meals, StoreKeys.meals),
+      _pullTable(SupabaseTables.weightEntries, StoreKeys.weights),
+      _pullTable(SupabaseTables.nutritionGoals, StoreKeys.goals),
+      _pullTable(SupabaseTables.nutritionPlans, StoreKeys.mealPlans),
+      _pullTable(SupabaseTables.recommendations, StoreKeys.recommendations),
+      _pullTable(SupabaseTables.notifications, StoreKeys.notifications),
+      _pullTable(SupabaseTables.conversations, StoreKeys.conversations),
       // Comptes : RLS renvoie soi (+ patients pour nutritionniste, tous pour admin).
-      await _pullProfilesIntoAccounts();
-      if (role == 'admin') {
-        await _pullTable(SupabaseTables.activityLogs, StoreKeys.activityLogs);
-      }
-      await LocalStore.instance
-          .writeString(_lastPullKey, DateTime.now().toIso8601String());
-    } catch (_) {/* silencieux : l'app reste utilisable hors-ligne */}
+      _pullProfilesIntoAccounts(),
+      if (role == 'admin')
+        _pullTable(SupabaseTables.activityLogs, StoreKeys.activityLogs),
+    ];
+    await Future.wait(tasks);
+    await LocalStore.instance
+        .writeString(_lastPullKey, DateTime.now().toIso8601String());
   }
 
   Future<void> _pullTable(String table, String storeKey) async {
-    final rows = await _client.from(table).select();
-    if (rows.isEmpty) return;
-    final data = rows
-        .map((r) => (r['data'] as Map?)?.cast<String, dynamic>() ?? <String, dynamic>{})
-        .where((m) => (m['id']?.toString() ?? '').isNotEmpty)
-        .toList();
-    if (data.isNotEmpty) {
-      await LocalStore.instance.writeList(storeKey, data, syncFirebase: false);
-    }
+    try {
+      // On ne récupère que la colonne JSONB `data` : c'est la représentation
+      // exacte du modèle, inutiles les colonnes relationnelles dupliquées.
+      final rows = await _client.from(table).select('data');
+      if (rows.isEmpty) return;
+      final data = rows
+          .map((r) => (r['data'] as Map?)?.cast<String, dynamic>() ?? <String, dynamic>{})
+          .where((m) => (m['id']?.toString() ?? '').isNotEmpty)
+          .toList();
+      if (data.isNotEmpty) {
+        await LocalStore.instance.writeList(storeKey, data, syncFirebase: false);
+      }
+    } catch (_) {/* silencieux : l'app reste utilisable hors-ligne */}
   }
 
   /// Les lignes `profiles` sont converties en comptes locaux {id,email,role,profile}.
   Future<void> _pullProfilesIntoAccounts() async {
-    final rows = await _client.from(SupabaseTables.profiles).select();
-    if (rows.isEmpty) return;
-    final accounts = rows.map((r) {
-      final profile = (r['profile'] as Map?)?.cast<String, dynamic>() ??
-          <String, dynamic>{};
-      profile['id'] = r['id'];
-      profile['email'] = r['email'] ?? profile['email'] ?? '';
-      profile['role'] = r['role'] ?? profile['role'] ?? 'user';
-      return <String, dynamic>{
-        'id': r['id'],
-        'email': r['email'] ?? '',
-        'role': r['role'] ?? 'user',
-        'passwordHash': '',
-        'profile': profile,
-      };
-    }).toList();
-    await LocalStore.instance
-        .writeList(StoreKeys.accounts, accounts, syncFirebase: false);
+    try {
+      final rows = await _client
+          .from(SupabaseTables.profiles)
+          .select('id,email,role,profile');
+      if (rows.isEmpty) return;
+      final accounts = rows.map((r) {
+        final profile = (r['profile'] as Map?)?.cast<String, dynamic>() ??
+            <String, dynamic>{};
+        profile['id'] = r['id'];
+        profile['email'] = r['email'] ?? profile['email'] ?? '';
+        profile['role'] = r['role'] ?? profile['role'] ?? 'user';
+        return <String, dynamic>{
+          'id': r['id'],
+          'email': r['email'] ?? '',
+          'role': r['role'] ?? 'user',
+          'passwordHash': '',
+          'profile': profile,
+        };
+      }).toList();
+      await LocalStore.instance
+          .writeList(StoreKeys.accounts, accounts, syncFirebase: false);
+    } catch (_) {/* silencieux */}
   }
 
   // ── MAPPINGS ──────────────────────────────────────────────────────────

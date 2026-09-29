@@ -32,7 +32,7 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _bootstrap() async {
-    await Future.delayed(const Duration(milliseconds: 1600));
+    await Future.delayed(const Duration(milliseconds: 650));
     if (!mounted) return;
     final auth = context.read<AuthProvider>();
     // Lien de réinitialisation ouvert : on va directement choisir le mot de

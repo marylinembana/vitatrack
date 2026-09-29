@@ -434,7 +434,7 @@ class AuthRepository {
     try {
       final row = await _client
           .from(SupabaseTables.profiles)
-          .select()
+          .select('id,email,role,profile')
           .eq('id', user.id)
           .maybeSingle();
       if (row != null) {
