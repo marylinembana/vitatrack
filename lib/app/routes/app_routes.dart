@@ -38,6 +38,12 @@ class AppRoutes {
   static const String weight = '/weight';
   static const String recommendations = '/recommendations';
   static const String notifications = '/notifications';
+
+  /// « Mon coach » : nutritionniste choisi par le patient + accès au chat.
+  static const String coach = '/coach';
+
+  /// Choix d'un nutritionniste vérifié par le patient.
+  static const String nutritionistPicker = '/coach/choose';
   static const String messaging = '/messaging';
   static const String profile = '/profile';
   static const String editProfile = '/profile/edit';

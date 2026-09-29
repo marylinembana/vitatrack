@@ -21,6 +21,7 @@ import '../../features/notifications/screens/notifications_screen.dart';
 import '../../features/nutritionist/screens/nutritionist_home_screen.dart';
 import '../../features/nutritionist/screens/nutritionist_verification_screen.dart';
 import '../../features/onboarding/presentation/screens/onboarding_screen.dart';
+import '../../features/profile/screens/coach_screen.dart';
 import '../../features/profile/screens/edit_profile_screen.dart';
 import '../../features/profile/screens/profile_screen.dart';
 import '../../features/profile/screens/settings_screen.dart';
@@ -86,6 +87,10 @@ class RouteGenerator {
         return _page(const RecommendationsScreen(), settings);
       case AppRoutes.notifications:
         return _page(const NotificationsScreen(), settings);
+      case AppRoutes.coach:
+        return _page(const CoachScreen(), settings);
+      case AppRoutes.nutritionistPicker:
+        return _page(const NutritionistPickerScreen(), settings);
       case AppRoutes.messaging:
         return _page(const ConversationsScreen(), settings);
       case AppRoutes.profile:

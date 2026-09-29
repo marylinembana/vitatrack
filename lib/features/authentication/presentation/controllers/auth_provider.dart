@@ -281,6 +281,18 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Associe le patient connecté à un nutritionniste (coach) et persiste ce
+  /// choix sur son PROPRE profil (`profiles.nutritionist_id`) : écriture
+  /// autorisée par le RLS. Le coach retrouvera ensuite ce patient parmi les
+  /// profils qui lui sont assignés.
+  Future<void> assignNutritionist(String nutritionistId) async {
+    final a = account;
+    if (a == null) return;
+    a.profile['nutritionistId'] = nutritionistId;
+    await _repo.updateProfile(a);
+    notifyListeners();
+  }
+
   /// Change le mot de passe du compte connecté.
   /// Retourne un message d'erreur, ou null si tout s'est bien passé.
   Future<String?> changePassword(String current, String fresh) async {

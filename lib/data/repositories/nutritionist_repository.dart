@@ -14,6 +14,11 @@ class NutritionistRepository {
       .map((a) => NutritionistModel.fromMap(a.profile))
       .toList();
 
+  /// Nutritionnistes **vérifiés** (validés par l'admin) : seuls ceux-là sont
+  /// visibles et choisissables par un patient comme coach.
+  List<NutritionistModel> verified() =>
+      all().where((n) => n.hasAccess).toList();
+
   NutritionistModel? byId(String id) {
     final account = _auth.allAccounts().firstWhere(
           (a) => a.id == id,

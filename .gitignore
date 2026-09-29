@@ -68,3 +68,6 @@ supabase/.temp/
 
 # Captures d'écran locales (non suivies)
 screenshot_*.png
+
+# Dossier temporaire d'application des migrations RLS (client pg local)
+.dbtmp/

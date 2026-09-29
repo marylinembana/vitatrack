@@ -148,10 +148,17 @@ class ProfileScreen extends StatelessWidget {
                           Navigator.of(context).pushNamed('/weight'),
                     ),
                     _QuickActionTile(
-                      icon: Icons.chat_bubble_outline,
+                      icon: Icons.co_present_outlined,
                       color: AppColors.carbs,
-                      title: 'Messages avec mon coach',
-                      subtitle: 'Échanger avec un nutritionniste',
+                      title: 'Mon coach',
+                      subtitle: 'Choisir un nutritionniste et discuter',
+                      onTap: () => Navigator.of(context).pushNamed('/coach'),
+                    ),
+                    _QuickActionTile(
+                      icon: Icons.chat_bubble_outline,
+                      color: AppColors.primary,
+                      title: 'Mes messages',
+                      subtitle: 'Historique des conversations',
                       onTap: () =>
                           Navigator.of(context).pushNamed('/messaging'),
                     ),
