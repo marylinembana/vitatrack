@@ -35,6 +35,12 @@ class _SplashScreenState extends State<SplashScreen>
     await Future.delayed(const Duration(milliseconds: 1600));
     if (!mounted) return;
     final auth = context.read<AuthProvider>();
+    // Lien de réinitialisation ouvert : on va directement choisir le mot de
+    // passe, avant toute redirection selon le rôle.
+    if (auth.isPasswordRecovery) {
+      Navigator.of(context).pushReplacementNamed('/auth/reset');
+      return;
+    }
     final target = auth.isSignedIn ? auth.landingRoute : '/onboarding';
     Navigator.of(context).pushReplacementNamed(target);
   }

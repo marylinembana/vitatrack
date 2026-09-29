@@ -25,6 +25,10 @@ class AuthProvider extends ChangeNotifier {
   bool get isSignedIn => _repo.currentAccount != null;
   String get role => _repo.currentAccount?.role ?? '';
 
+  /// true quand un lien de réinitialisation vient d'ouvrir une session de
+  /// récupération : l'app doit proposer de choisir un nouveau mot de passe.
+  bool get isPasswordRecovery => _repo.isPasswordRecovery;
+
   UserModel? get currentUser {
     final a = account;
     if (a == null || a.role != UserRole.user) return null;
@@ -181,6 +185,25 @@ class AuthProvider extends ChangeNotifier {
       _error = null;
     } on AppException catch (e) {
       _error = e.message;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  /// Définit le nouveau mot de passe à l'issue de la récupération par e-mail.
+  /// Retourne un message d'erreur, ou null en cas de succès.
+  Future<String?> completePasswordReset(String newPassword) async {
+    _setLoading(true);
+    try {
+      await _repo.completePasswordReset(newPassword);
+      _error = null;
+      notifyListeners();
+      return null;
+    } on AppException catch (e) {
+      _error = e.message;
+      return e.message;
+    } catch (_) {
+      return 'Impossible de réinitialiser le mot de passe.';
     } finally {
       _setLoading(false);
     }

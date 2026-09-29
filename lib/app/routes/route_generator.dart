@@ -6,6 +6,7 @@ import '../../features/admin/screens/admin_home_screen.dart';
 import '../../features/authentication/presentation/screens/forgot_password_screen.dart';
 import '../../features/authentication/presentation/screens/login_screen.dart';
 import '../../features/authentication/presentation/screens/register_screen.dart';
+import '../../features/authentication/presentation/screens/reset_password_screen.dart';
 import '../../features/dashboard/user_dashboard/controllers/app_provider.dart';
 import '../../features/dashboard/user_dashboard/screens/user_home_screen.dart';
 import '../../features/foods/presentation/screens/categories_screen.dart';
@@ -44,6 +45,8 @@ class RouteGenerator {
         return _page(const RegisterScreen(), settings);
       case AppRoutes.forgotPassword:
         return _page(const ForgotPasswordScreen(), settings);
+      case AppRoutes.resetPassword:
+        return _page(const ResetPasswordScreen(), settings);
       case AppRoutes.onboardingSetup:
         return _page(const GoalSetupScreen(isOnboarding: true), settings);
       case AppRoutes.userHome:

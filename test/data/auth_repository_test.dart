@@ -151,4 +151,36 @@ void main() {
       expect(repo.hashForDemo('abc'), isNot(repo.hashForDemo('abd')));
     });
   });
+
+  group('réinitialisation mot de passe (hors-ligne)', () {
+    test('sendPasswordReset : email inconnu renvoie une erreur', () async {
+      await expectLater(
+        repo.sendPasswordReset('ghost@nowhere.app'),
+        throwsA(isA<AuthException>()),
+      );
+    });
+
+    test('sendPasswordReset : email connu ne lève pas', () async {
+      await repo.register(
+        email: 'reset@vitatrack.app',
+        password: 'old12345',
+        fullName: 'Reset',
+        profile: profileOf('reset@vitatrack.app'),
+      );
+      await repo.sendPasswordReset('reset@vitatrack.app');
+    });
+
+    test('completePasswordReset : valide la longueur puis met à jour le compte',
+        () async {
+      await repo.login('reset@vitatrack.app', 'old12345');
+      await expectLater(
+        repo.completePasswordReset('123'),
+        throwsA(isA<AuthException>()),
+      );
+      await repo.completePasswordReset('brandnew1');
+      final account = await repo.login('reset@vitatrack.app', 'brandnew1');
+      expect(account.email, 'reset@vitatrack.app');
+      expect(repo.isPasswordRecovery, isFalse);
+    });
+  });
 }

@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
+
 /// Configuration Supabase (URL + clé *anon* publique).
 ///
 /// La clé `anon` est publique : la sécurité est assurée par le RLS (Row Level
@@ -31,6 +33,28 @@ class SupabaseConfig {
 
   /// Bucket Storage public pour les images importées depuis l'appareil.
   static const String imageBucket = 'images';
+
+  /// URL de retour utilisée par les liens d'e-mails Supabase (réinitialisation
+  /// du mot de passe, confirmation d'inscription). Sur le web on renvoie vers
+  /// l'origine courante (même domaine que l'app déployée) afin que le client
+  /// Supabase détecte le jeton à l'ouverture du lien. Hors web / tests, on
+  /// retombe sur l'URL publique surchargeable via `--dart-define=APP_BASE_URL`.
+  static const String _fallbackBaseUrl = String.fromEnvironment(
+    'APP_BASE_URL',
+    defaultValue: 'https://vitatrack-pi.vercel.app/',
+  );
+
+  static String get appRedirectUrl {
+    if (kIsWeb) {
+      try {
+        final origin = Uri.base.origin;
+        if (origin.startsWith('http')) return '$origin/';
+      } catch (_) {
+        // Uri.base peut être illisible dans certains contextes : on ignore.
+      }
+    }
+    return _fallbackBaseUrl;
+  }
 
   // Noms des tables Postgres (miroir des collectionsFirestore d'origine).
   static const tableProfiles = 'profiles';

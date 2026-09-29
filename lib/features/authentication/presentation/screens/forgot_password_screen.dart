@@ -34,15 +34,20 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     if (auth.error == null) {
       showDialog(
         context: context,
-        builder: (_) => AlertDialog(
-          title: const Text('Email envoyé'),
+        builder: (dialogCtx) => AlertDialog(
+          title: const Text('Vérifiez votre boîte mail'),
           content: Text(
-            'Un lien de réinitialisation a été envoyé à ${_email.text}. '
-            '(Mode démo : l\'envoi réel sera activé avec Firebase.)',
+            'Si un compte est associé à ${_email.text.trim()}, un lien de '
+            'réinitialisation vient de lui être envoyé. Ouvrez ce lien sur cet '
+            'appareil pour choisir un nouveau mot de passe. Le lien n\'est '
+            'valable que quelques minutes.',
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () {
+                Navigator.of(dialogCtx).pop();
+                Navigator.of(context).pop();
+              },
               child: const Text('OK'),
             ),
           ],

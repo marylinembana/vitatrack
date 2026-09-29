@@ -20,6 +20,10 @@ Future<void> main() async {
 
   // Backend principal : Supabase (Auth + PostgREST + Storage).
   await SupabaseBootstrap.init();
+  // Détection d'une réinitialisation du mot de passe : on s'abonne aux
+  // changements d'état d'auth le plus tôt possible pour capter l'événement
+  // `passwordRecovery` déclenché à l'ouverture du lien reçu par e-mail.
+  AuthRepository.instance.startAuthRecoveryListener();
   // Firebase n'est utilisé que pour le push (FCM) — facultatif.
   await FirebaseBootstrap.init();
 

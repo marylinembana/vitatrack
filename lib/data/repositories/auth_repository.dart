@@ -1,7 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
+import 'package:flutter/foundation.dart' show ValueNotifier;
 import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 import '../../app/constants/app_constants.dart';
+import '../../app/constants/supabase_config.dart';
 import '../../core/errors/app_exception.dart';
 import '../../core/services/local_store.dart';
 import '../../core/services/supabase_bootstrap.dart';
@@ -43,6 +46,26 @@ class AuthRepository {
   final Random _random = Random();
   UserAccount? _current;
   UserAccount? get currentAccount => _current;
+
+  /// Signalise qu'une session vient d'être récupérée via un lien de
+  /// réinitialisation du mot de passe (événement Supabase `passwordRecovery`).
+  /// L'UI (splash) s'en sert pour ouvrir l'écran « nouveau mot de passe ».
+  final ValueNotifier<bool> _recoveryNotifier = ValueNotifier<bool>(false);
+  bool get isPasswordRecovery => _recoveryNotifier.value;
+  StreamSubscription<sb.AuthState>? _authRecoverySub;
+
+  /// Écoute les changements d'état d'authentification pour détecter une
+  /// récupération de mot de passe. À appeler une fois au démarrage de l'app.
+  void startAuthRecoveryListener() {
+    if (!_online || _authRecoverySub != null) return;
+    _authRecoverySub = _client.auth.onAuthStateChange.listen((state) {
+      if (state.event == sb.AuthChangeEvent.passwordRecovery) {
+        _recoveryNotifier.value = true;
+      }
+    });
+  }
+
+  void clearPasswordRecovery() => _recoveryNotifier.value = false;
 
   sb.SupabaseClient get _client => sb.Supabase.instance.client;
   bool get _online => SupabaseBootstrap.ready;
@@ -223,17 +246,62 @@ class AuthRepository {
   }
 
   Future<void> sendPasswordReset(String email) async {
+    final normalized = email.trim().toLowerCase();
     if (_online) {
       try {
-        await _client.auth.resetPasswordForEmail(email.trim().toLowerCase());
+        // `redirectTo` : le lien reçu par e-mail renvoie vers l'app, où le
+        // client Supabase détecte le jeton et ouvre la session de récupération.
+        await _client.auth.resetPasswordForEmail(
+          normalized,
+          redirectTo: SupabaseConfig.appRedirectUrl,
+        );
         return;
       } catch (e) {
         throw AuthException(_message(e), code: _code(e));
       }
     }
-    if (!_loadAccounts().any((a) => a.email == email.trim().toLowerCase())) {
+    if (!_loadAccounts().any((a) => a.email == normalized)) {
       throw const AuthException('Aucun compte trouvé avec cet email.', code: 'user-not-found');
     }
+  }
+
+  /// Finalise la réinitialisation : l'utilisateur vient d'ouvrir le lien et
+  /// dispose d'une session de récupération. On définit le nouveau mot de passe
+  /// via `updateUser` (aucun mot de passe actuel requis dans ce contexte).
+  Future<void> completePasswordReset(String newPassword) async {
+    if (newPassword.trim().length < 6) {
+      throw const AuthException(
+          'Le mot de passe doit contenir au moins 6 caractères.');
+    }
+    if (_online) {
+      if (_client.auth.currentUser == null) {
+        throw const AuthException(
+            'Lien de réinitialisation invalide ou expiré. Recommencez.');
+      }
+      try {
+        await _client.auth
+            .updateUser(sb.UserAttributes(password: newPassword.trim()));
+      } catch (e) {
+        throw AuthException(_message(e), code: _code(e));
+      }
+      final user = _client.auth.currentUser;
+      if (user != null) {
+        final a = await _fromProfile(user);
+        _current = a;
+        await _cache(a);
+        await _store.writeString(StoreKeys.session, a.id);
+      }
+      clearPasswordRecovery();
+      return;
+    }
+    // Hors-ligne : pas d'e-mail réel ; on met à jour le compte connecté.
+    final a = _current;
+    if (a == null) {
+      throw const AuthException(
+          'Lien de réinitialisation invalide ou expiré. Recommencez.');
+    }
+    await changePassword(a.id, newPassword.trim());
+    clearPasswordRecovery();
   }
 
   bool checkCurrentPassword(String password) {

@@ -8,6 +8,9 @@ class AppRoutes {
   static const String register = '/register';
   static const String forgotPassword = '/forgot-password';
 
+  /// Choix d'un nouveau mot de passe après ouverture du lien de récupération.
+  static const String resetPassword = '/auth/reset';
+
   /// Premier réglage d'objectif après l'inscription.
   static const String onboardingSetup = '/onboarding-setup';
 
